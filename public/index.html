@@ -12,6 +12,10 @@
         #player-list { list-style: none; padding: 0; }
         #player-list li { padding: 5px; border-bottom: 1px solid #eee; }
         #message-display { color: #d9534f; margin: 10px 0; font-weight: bold; }
+        #lobby-view #start-game-btn {
+            display: block;
+            margin: 20px auto;
+        }
     </style>
 </head>
 <body>
@@ -25,6 +29,9 @@
         <div id="home-view">
             <button onclick="showCreateRoom()">我是房主</button>
             <button onclick="showJoinRoom()">我是队员</button>
+            <br>
+            <br>
+            <button onclick="clearRoomData()">清除房间数据</button>
         </div>
 
         <div id="create-room-view" style="display:none;">
@@ -66,7 +73,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:5000'; // 后端地址
+        const API_URL = 'https://127.0.0.1:5000'; // 后端地址
 
         let currentRoomId = '';
         let currentPlayerName = '';
@@ -252,6 +259,35 @@
                     });
                 } else {
                     showMessage('获取任务失败: ' + data.message);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试。');
+            }
+        }
+
+        async function clearRoomData() {
+            if (!currentRoomId) {
+                showMessage('当前没有要清除的房间数据。');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/clear_data`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room_id: currentRoomId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('房间数据已成功清除！');
+                    // 重置前端状态并返回主页
+                    currentRoomId = '';
+                    currentPlayerName = '';
+                    isOwner = false;
+                    clearInterval(lobbyIntervalId);
+                    clearInterval(wishesIntervalId);
+                    showView('home-view');
+                } else {
+                    showMessage('清除失败: ' + data.message);
                 }
             } catch (error) {
                 showMessage('网络错误，请稍后重试。');
