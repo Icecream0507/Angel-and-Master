@@ -5,16 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>天使与主人</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        input, button { padding: 10px; margin: 5px; width: 80%; max-width: 300px; }
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 12px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        input, button { padding: 12px; margin: 8px; width: 80%; max-width: 300px; border-radius: 6px; border: 1px solid #ddd; font-size: 16px; }
+        button { cursor: pointer; background-color: #007BFF; color: white; border: none; transition: background-color 0.3s ease; }
+        button:hover { background-color: #0056b3; }
         #room-id-display { font-size: 24px; color: #007BFF; font-weight: bold; }
         #player-list { list-style: none; padding: 0; }
-        #player-list li { padding: 5px; border-bottom: 1px solid #eee; }
+        #player-list li { padding: 10px; border-bottom: 1px solid #eee; }
         #message-display { color: #d9534f; margin: 10px 0; font-weight: bold; }
-        #lobby-view #start-game-btn {
+        #lobby-view #start-game-btn,
+        #game-view-tasks #end-game-btn {
             display: block;
             margin: 20px auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 10px;
+            position: relative;
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 15px;
+            top: 5px;
+        }
+        .close-btn:hover,
+        .close-btn:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #relationship-canvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .footer {
+            text-align: center; 
+            color: #888; 
+            font-size: 12px; 
+            margin-top: 50px;
         }
     </style>
 </head>
@@ -22,8 +72,9 @@
 
     <div id="app" class="container">
         <h1>天使与主人</h1>
+        <h2>👼&👨</h2>
+        <h3>交大野协欢迎你！</h3>
 
-        <!-- 信息提示区域 -->
         <p id="message-display"></p>
 
         <div id="home-view">
@@ -31,16 +82,19 @@
             <button onclick="showJoinRoom()">我是队员</button>
             <br>
             <br>
-            <button onclick="clearRoomData()">清除房间数据</button>
+            <button onclick="showRulesModal()">游戏规则</button>
+            <button onclick="clearRoomData()">清除所有房间数据</button>
         </div>
 
         <div id="create-room-view" style="display:none;">
+            <button onclick="showView('home-view')">返回</button>
             <h2>创建房间</h2>
             <input type="text" id="owner-name" placeholder="输入你的昵称/名字">
             <button onclick="createRoom()">创建房间</button>
         </div>
 
         <div id="join-room-view" style="display:none;">
+            <button onclick="showView('home-view')">返回</button>
             <h2>加入房间</h2>
             <input type="text" id="join-room-id" placeholder="输入房间号">
             <input type="text" id="join-player-name" placeholder="输入你的昵称/名字">
@@ -48,6 +102,7 @@
         </div>
 
         <div id="lobby-view" style="display:none;">
+            <button onclick="showView('home-view')">返回</button>
             <h2>游戏大厅</h2>
             <p>房间号: <span id="lobby-room-id"></span></p>
             <h3>玩家列表:</h3>
@@ -69,25 +124,57 @@
             <p>你的主人是: <span id="my-owner-name"></span></p>
             <h3>你的任务:</h3>
             <ul id="my-tasks-list"></ul>
+            <button id="end-game-btn" onclick="endGame()">结束游戏</button>
+        </div>
+
+        <div id="game-view-results" style="display:none;">
+            <h2>游戏结果与人物关系</h2>
+            <p>点击人物圆圈查看ta的愿望。</p>
+            <canvas id="relationship-canvas"></canvas>
+        </div>
+        
+    </div>
+
+    <div id="wishes-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeWishesModal()">&times;</span>
+            <h3 id="wishes-modal-title"></h3>
+            <ul id="wishes-modal-list"></ul>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeRulesModal()">&times;</span>
+            <h2>游戏规则</h2>
+            <p>天使👼与主人👨</p>
+            <ul>
+                <li>玩家创建房间或加入房间。</li>
+                <li>当所有玩家就绪后，房主开始游戏。</li>
+                <li>系统会秘密地为每个玩家分配一个*天使*和一个*主人*。</li>
+                <li>玩家可以提交至多3个愿望。</li>
+                <li>一旦所有人都提交了愿望，你就可以看到你的主人的愿望清单。你的任务是尽力去完成你的主人的愿望，而你的天使则会尽力完成你的愿望。</li>
+                <li>游戏没有时间限制，当房主认为任务都已完成时，可以结束游戏。</li>
+                <li>游戏结束后，所有玩家的真实关系将被揭晓！让我看看谁没完成任务🤬</li>
+                <li>inspired by DT, technically supported by Icecream🍦, 交大野协 ,SJTU ,上海 , 中国</li>
+            </ul>
         </div>
     </div>
 
     <script>
-        const API_URL = 'https://127.0.0.1:5000'; // 后端地址
+        // API基础URL
+        const API_URL = 'http://127.0.0.1:5000/';
 
+        // 游戏状态变量
         let currentRoomId = '';
         let currentPlayerName = '';
         let isOwner = false;
         let lobbyIntervalId = null;
         let wishesIntervalId = null;
+        let gameStatusIntervalId = null;
+        let playerPositions = {}; 
 
-        function showMessage(msg) {
-            document.getElementById('message-display').textContent = msg;
-            setTimeout(() => {
-                document.getElementById('message-display').textContent = '';
-            }, 3000); // 3秒后清除提示
-        }
-
+        // 显示特定视图
         function showView(viewId) {
             document.querySelectorAll('#app > div').forEach(div => {
                 div.style.display = 'none';
@@ -95,9 +182,23 @@
             document.getElementById(viewId).style.display = 'block';
         }
 
+        // 显示消息提示
+        function showMessage(msg) {
+            document.getElementById('message-display').textContent = msg;
+            setTimeout(() => {
+                document.getElementById('message-display').textContent = '';
+            }, 3000); 
+        }
+
+        // 切换视图函数
         function showCreateRoom() { showView('create-room-view'); }
         function showJoinRoom() { showView('join-room-view'); }
+        function showWishesModal() { document.getElementById('wishes-modal').style.display = 'block'; }
+        function closeWishesModal() { document.getElementById('wishes-modal').style.display = 'none'; }
+        function showRulesModal() { document.getElementById('rules-modal').style.display = 'block'; }
+        function closeRulesModal() { document.getElementById('rules-modal').style.display = 'none'; }
 
+        // 创建房间
         async function createRoom() {
             const ownerName = document.getElementById('owner-name').value;
             if (!ownerName) {
@@ -105,10 +206,11 @@
                 return;
             }
             try {
+                const payload = { owner_name: ownerName };
                 const response = await fetch(`${API_URL}/create_room`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ owner_name: ownerName })
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -125,6 +227,7 @@
             }
         }
 
+        // 加入房间
         async function joinRoom() {
             const roomId = document.getElementById('join-room-id').value;
             const playerName = document.getElementById('join-player-name').value;
@@ -133,10 +236,11 @@
                 return;
             }
             try {
+                const payload = { room_id: roomId, player_name: playerName };
                 const response = await fetch(`${API_URL}/join_room`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_id: roomId, player_name: playerName })
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -153,17 +257,18 @@
             }
         }
 
+        // 显示大厅视图
         function showLobby() {
             if (!currentRoomId) { return; }
             showView('lobby-view');
             document.getElementById('lobby-room-id').textContent = currentRoomId;
             document.getElementById('start-game-btn').style.display = isOwner ? 'block' : 'none';
 
-            // 实时更新玩家列表 (简易版)
+            if (lobbyIntervalId) { clearInterval(lobbyIntervalId); }
             lobbyIntervalId = setInterval(async () => {
                 const response = await fetch(`${API_URL}/get_room_info/${currentRoomId}`);
                 const data = await response.json();
-                if (data.success && data.status === 'lobby') {
+                if (data.success) {
                     const playerList = document.getElementById('player-list');
                     playerList.innerHTML = '';
                     data.players.forEach(p => {
@@ -171,25 +276,28 @@
                         li.textContent = p;
                         playerList.appendChild(li);
                     });
-                } else if (data.success && data.status === 'in_game') {
-                    // 游戏已开始，清除 lobby 轮询
-                    clearInterval(lobbyIntervalId);
-                    showGameWishes();
+
+                    if (data.status === 'in_game') {
+                        clearInterval(lobbyIntervalId);
+                        showGameWishes();
+                    }
                 }
-            }, 3000); // 每3秒刷新一次
+            }, 3000);
         }
         
+        // 开始游戏
         async function startGame() {
             try {
+                const payload = { room_id: currentRoomId };
                 const response = await fetch(`${API_URL}/start_game`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_id: currentRoomId })
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
                     showMessage('游戏开始！');
-                    // 房主直接跳转到愿望提交界面，并由 showLobby 里的轮询来处理
+                    showGameWishes(); 
                 } else {
                     showMessage('开始游戏失败: ' + data.message);
                 }
@@ -198,18 +306,32 @@
             }
         }
 
+        // 显示愿望提交视图
         function showGameWishes() {
             showView('game-view-wishes');
             document.getElementById('wish1').value = '';
             document.getElementById('wish2').value = '';
             document.getElementById('wish3').value = '';
+
+            if (wishesIntervalId) { clearInterval(wishesIntervalId); }
+            wishesIntervalId = setInterval(async () => {
+                const allWishesSubmittedResponse = await fetch(`${API_URL}/check_all_wishes/${currentRoomId}`);
+                const allWishesSubmittedData = await allWishesSubmittedResponse.json();
+                
+                if (allWishesSubmittedData.all_submitted) {
+                    clearInterval(wishesIntervalId); 
+                    showGameTasks();
+                }
+            }, 3000); 
         }
 
+        // 提交愿望
         async function submitWishes() {
-            const wish1 = document.getElementById('wish1').value;
-            const wish2 = document.getElementById('wish2').value;
-            const wish3 = document.getElementById('wish3').value;
-            const wishes = [wish1, wish2, wish3].filter(w => w);
+            const wishes = [
+                document.getElementById('wish1').value,
+                document.getElementById('wish2').value,
+                document.getElementById('wish3').value
+            ].filter(w => w);
 
             if (wishes.length === 0) {
                 showMessage('请至少输入一个愿望！');
@@ -217,24 +339,15 @@
             }
             
             try {
+                const payload = { room_id: currentRoomId, player_name: currentPlayerName, wishes: wishes };
                 const response = await fetch(`${API_URL}/submit_wishes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_id: currentRoomId, player_name: currentPlayerName, wishes: wishes })
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
                     showMessage('愿望提交成功，等待所有玩家提交。');
-                    // 提交成功后，启动定时器来检查是否可以开始任务阶段
-                    wishesIntervalId = setInterval(async () => {
-                        const allWishesSubmittedResponse = await fetch(`${API_URL}/check_all_wishes/${currentRoomId}`);
-                        const allWishesSubmittedData = await allWishesSubmittedResponse.json();
-                        
-                        if (allWishesSubmittedData.all_submitted) {
-                            clearInterval(wishesIntervalId); // 停止轮询
-                            showGameTasks(); // 进入任务阶段
-                        }
-                    }, 3000); // 每3秒检查一次
                 } else {
                     showMessage('提交失败: ' + data.message);
                 }
@@ -243,8 +356,11 @@
             }
         }
 
+        // 显示任务视图
         async function showGameTasks() {
             showView('game-view-tasks');
+            document.getElementById('end-game-btn').style.display = isOwner ? 'block' : 'none';
+
             try {
                 const response = await fetch(`${API_URL}/get_my_owner/${currentRoomId}/${currentPlayerName}`);
                 const data = await response.json();
@@ -263,36 +379,200 @@
             } catch (error) {
                 showMessage('网络错误，请稍后重试。');
             }
+
+            if (gameStatusIntervalId) { clearInterval(gameStatusIntervalId); }
+            gameStatusIntervalId = setInterval(async () => {
+                const response = await fetch(`${API_URL}/get_room_info/${currentRoomId}`);
+                const data = await response.json();
+                if (data.success && data.status === 'game_over') { // 检查'game_over'状态
+                    clearInterval(gameStatusIntervalId);
+                    showResults();
+                }
+            }, 3000);
         }
 
-        async function clearRoomData() {
-            if (!currentRoomId) {
-                showMessage('当前没有要清除的房间数据。');
-                return;
-            }
+        // 结束游戏
+        async function endGame() {
             try {
-                const response = await fetch(`${API_URL}/clear_data`, {
+                const payload = { room_id: currentRoomId, player_name: currentPlayerName }; // 包含玩家名进行验证
+                const response = await fetch(`${API_URL}/end_game`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_id: currentRoomId })
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
-                    showMessage('房间数据已成功清除！');
-                    // 重置前端状态并返回主页
+                    showMessage('游戏已结束！');
+                    showResults();
+                } else {
+                    showMessage('结束游戏失败: ' + data.message);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试。');
+            }
+        }
+
+        // 显示游戏结果
+        async function showResults() {
+            showView('game-view-results');
+            try {
+                const response = await fetch(`${API_URL}/get_all_relationships/${currentRoomId}`); // 调用新端点
+                const data = await response.json();
+                if (data.success) {
+                    drawRelationships(data.relationships);
+                } else {
+                    showMessage('获取游戏结果失败: ' + data.message);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试。');
+            }
+        }
+
+        // 绘制关系图
+        function drawRelationships(relationships) {
+            const canvas = document.getElementById('relationship-canvas');
+            const ctx = canvas.getContext('2d');
+
+            const containerWidth = canvas.parentElement.clientWidth;
+            canvas.width = containerWidth > 600 ? 600 : containerWidth;
+            canvas.height = 400;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const players = Object.keys(relationships);
+            if (players.length === 0) return;
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 50;
+            const angleStep = (2 * Math.PI) / players.length;
+            const nodeRadius = 25;
+            playerPositions = {};
+
+            // 绘制玩家节点
+            players.forEach((player, index) => {
+                const angle = index * angleStep - Math.PI / 2; 
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                playerPositions[player] = { x, y };
+
+                ctx.beginPath();
+                ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#007BFF';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(player, x, y);
+            });
+
+            // 绘制关系线和箭头
+            for (const angel in relationships) {
+                const owner = relationships[angel];
+                const startPos = playerPositions[owner];
+                const endPos = playerPositions[angel];
+
+                if (startPos && endPos) {
+                    ctx.beginPath();
+                    ctx.moveTo(startPos.x, startPos.y);
+                    ctx.lineTo(endPos.x, endPos.y);
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    const headlen = 10;
+                    const dx = endPos.x - startPos.x;
+                    const dy = endPos.y - startPos.y;
+                    const angle = Math.atan2(dy, dx);
+
+                    const endX = endPos.x - nodeRadius * Math.cos(angle);
+                    const endY = endPos.y - nodeRadius * Math.sin(angle);
+
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            // 绑定点击事件，显示玩家愿望
+            canvas.onclick = (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+
+                for (const player in playerPositions) {
+                    const pos = playerPositions[player];
+                    const distance = Math.sqrt(Math.pow(mouseX - pos.x, 2) + Math.pow(mouseY - pos.y, 2));
+
+                    if (distance <= nodeRadius) {
+                        showPlayerWishes(player);
+                        return;
+                    }
+                }
+            };
+        }
+
+        // 显示玩家的愿望
+        async function showPlayerWishes(playerName) {
+            try {
+                const response = await fetch(`${API_URL}/get_wishes/${currentRoomId}/${playerName}`);
+                const data = await response.json();
+                if (data.success) {
+                    const wishesList = document.getElementById('wishes-modal-list');
+                    wishesList.innerHTML = '';
+                    document.getElementById('wishes-modal-title').textContent = `${playerName} 的愿望`;
+                    data.wishes.forEach(wish => {
+                        const li = document.createElement('li');
+                        li.textContent = wish;
+                        wishesList.appendChild(li);
+                    });
+                    showWishesModal();
+                } else {
+                    showMessage('获取愿望失败: ' + data.message);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试。');
+            }
+        }
+
+        // 清除所有房间数据
+        async function clearRoomData() {
+            try {
+                const response = await fetch(`${API_URL}/clear_all_data`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('所有房间数据已成功清除！');
                     currentRoomId = '';
                     currentPlayerName = '';
                     isOwner = false;
-                    clearInterval(lobbyIntervalId);
-                    clearInterval(wishesIntervalId);
+                    if (lobbyIntervalId) { clearInterval(lobbyIntervalId); }
+                    if (wishesIntervalId) { clearInterval(wishesIntervalId); }
+                    if (gameStatusIntervalId) { clearInterval(gameStatusIntervalId); }
                     showView('home-view');
                 } else {
-                    showMessage('清除失败: ' + data.message);
+                    showMessage('清除所有数据失败: ' + data.message);
                 }
             } catch (error) {
                 showMessage('网络错误，请稍后重试。');
             }
         }
     </script>
+    <div class="footer">
+        糕研 v1.0
+    </div>
 </body>
 </html>
