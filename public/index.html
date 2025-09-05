@@ -84,6 +84,8 @@
             <br>
             <button onclick="showRulesModal()">游戏规则</button>
             <button onclick="clearRoomData()">清除所有房间数据</button>
+            <br>
+            <button onclick="showSponsorModal()">赞助我们</button>
         </div>
 
         <div id="create-room-view" style="display:none;">
@@ -105,6 +107,7 @@
             <button onclick="showView('home-view')">返回</button>
             <h2>游戏大厅</h2>
             <p>房间号: <span id="lobby-room-id"></span></p>
+            <p>当前人数: <span id="player-count">0</span></p>
             <h3>玩家列表:</h3>
             <ul id="player-list"></ul>
             <button id="start-game-btn" onclick="startGame()">开始游戏</button>
@@ -150,6 +153,7 @@
             <p>天使👼与主人👨</p>
             <ul>
                 <li>玩家创建房间或加入房间。</li>
+                <li>房主重新加入房间，请使用相同的昵称以玩家身份进入。</li>
                 <li>当所有玩家就绪后，房主开始游戏。</li>
                 <li>系统会秘密地为每个玩家分配一个*天使*和一个*主人*。</li>
                 <li>玩家可以提交至多3个愿望。</li>
@@ -158,6 +162,15 @@
                 <li>游戏结束后，所有玩家的真实关系将被揭晓！让我看看谁没完成任务🤬</li>
                 <li>inspired by DT, technically supported by Icecream🍦, 交大野协 ,SJTU ,上海 , 中国</li>
             </ul>
+        </div>
+    </div>
+
+    <div id="sponsor-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeSponsorModal()">&times;</span>
+            <h2>特别鸣谢</h2>
+            <p>感谢交大野协对本游戏的大力支持！</p>
+            <p>为爱发电ing......</p>
         </div>
     </div>
 
@@ -197,6 +210,9 @@
         function closeWishesModal() { document.getElementById('wishes-modal').style.display = 'none'; }
         function showRulesModal() { document.getElementById('rules-modal').style.display = 'block'; }
         function closeRulesModal() { document.getElementById('rules-modal').style.display = 'none'; }
+        // 新增赞助模态窗口控制函数
+        function showSponsorModal() { document.getElementById('sponsor-modal').style.display = 'block'; }
+        function closeSponsorModal() { document.getElementById('sponsor-modal').style.display = 'none'; }
 
         // 创建房间
         async function createRoom() {
@@ -243,6 +259,14 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
+                if (data.message === '房主再次进入房间') {
+                    currentRoomId = roomId;
+                    currentPlayerName = playerName;
+                    isOwner = true;
+                    showMessage('欢迎回来，房主!');
+                    showLobby();
+                    return;
+                }
                 if (data.success) {
                     currentRoomId = roomId;
                     currentPlayerName = playerName;
@@ -276,6 +300,7 @@
                         li.textContent = p;
                         playerList.appendChild(li);
                     });
+                    document.getElementById('player-count').textContent = data.players.length;
 
                     if (data.status === 'in_game') {
                         clearInterval(lobbyIntervalId);

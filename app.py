@@ -61,9 +61,12 @@ def join_room():
         return jsonify({'success': False, 'message': '游戏已开始'}), 400
 
     if any(p['name'] == player_name for p in room['players']):
+        if player_name == room['owner']:
+            return jsonify({'success': True, 'message': '房主再次进入房间'})
+        
         return jsonify({'success': False, 'message': '此房间已存在该玩家名'}), 400
-
-    room['players'].append({'name': player_name, 'is_owner': False})
+    if player_name != room['owner']:
+        room['players'].append({'name': player_name, 'is_owner': False})
     return jsonify({'success': True, 'message': '加入房间成功'})
 
 @app.route('/get_room_info/<room_id>', methods=['GET'])
